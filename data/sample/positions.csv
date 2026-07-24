@@ -1,0 +1,6 @@
+commodity,instrument,direction,quantity,unit,entry_price,market_price,currency,counterparty
+Copper,LME Future,Long,250,MT,9410,9475,USD,Global Metals Ltd
+Copper,Physical,Long,120,MT,9320,9475,USD,Northstar Trading
+Aluminium,LME Future,Short,180,MT,2580,2545,USD,Atlas Commodities
+Copper,Physical,Long,80,MT,9400,9475,USD,Apex Energy & Metals
+Aluminium,Physical,Long,150,MT,2520,2545,USD,Global Metals Ltd

@@ -1,0 +1,5 @@
+id,name,credit_limit,current_exposure,risk_rating
+cp_01,Global Metals Ltd,5000000,4550000,BB+
+cp_02,Northstar Trading,3000000,1200000,A-
+cp_03,Atlas Commodities,4000000,2800000,BBB
+cp_04,Apex Energy & Metals,2000000,1950000,B+

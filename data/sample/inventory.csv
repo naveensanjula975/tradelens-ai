@@ -1,0 +1,6 @@
+commodity,location,quantity,unit,minimum_required,available_quantity
+Copper,Rotterdam Vault,350,MT,500,280
+Copper,Singapore Port,180,MT,200,150
+Aluminium,Antwerp Warehouse,850,MT,600,800
+Copper,Shanghai Bonded,100,MT,150,90
+Aluminium,Port Klang,420,MT,300,400

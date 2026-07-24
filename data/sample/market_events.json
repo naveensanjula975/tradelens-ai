@@ -1,0 +1,20 @@
+[
+  {
+    "id": "evt_01",
+    "commodity": "Copper",
+    "title": "Port Congestion in South America",
+    "impact_level": "High",
+    "description": "Vessel loading delays at major Chilean ports extended by 4-6 days due to adverse weather.",
+    "source": "Global Shipping Intelligence",
+    "date": "2026-07-22"
+  },
+  {
+    "id": "evt_02",
+    "commodity": "Aluminium",
+    "title": "Smelter Capacity Cut Announced",
+    "impact_level": "Medium",
+    "description": "European smelter curtailments expected to tighten regional physical spot availability.",
+    "source": "Metals Market Insider",
+    "date": "2026-07-23"
+  }
+]

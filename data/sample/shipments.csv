@@ -1,0 +1,6 @@
+commodity,origin,destination,quantity,unit,expected_arrival,status,delay_days
+Copper,Chile,Singapore,400,MT,2026-07-21,Delayed,6
+Copper,Peru,Colombo,180,MT,2026-07-30,In Transit,0
+Aluminium,UAE,Singapore,300,MT,2026-07-27,In Transit,1
+Copper,Zambia,Durban,220,MT,2026-07-20,Delayed,4
+Aluminium,Australia,Rotterdam,500,MT,2026-08-05,On Schedule,0

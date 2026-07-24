@@ -1,0 +1,3 @@
+commodity,max_position_quantity,max_counterparty_exposure_pct,min_inventory_days
+Copper,500,85.0,14
+Aluminium,800,90.0,10
