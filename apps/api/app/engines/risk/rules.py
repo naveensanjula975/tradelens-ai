@@ -62,6 +62,64 @@ def counterparty_limit_exceeded_rule(cp) -> dict | None:
             }
     return None
 
+def high_concentration_rule(positions) -> dict | None:
+    if not positions:
+        return None
+    counterparty_counts = {}
+    for p in positions:
+        cp = p.counterparty or "Exchange"
+        counterparty_counts[cp] = counterparty_counts.get(cp, 0) + p.quantity
+    
+    total_qty = sum(p.quantity for p in positions)
+    if total_qty > 0:
+        for cp, qty in counterparty_counts.items():
+            pct = (qty / total_qty) * 100
+            if pct > 60:
+                return {
+                    "rule": "high_concentration",
+                    "category": "concentration",
+                    "severity": "medium",
+                    "score": 15,
+                    "message": f"High concentration detected: {cp} accounts for {round(pct, 1)}% of total position volume",
+                    "action": "Diversify counterparty allocations for upcoming orders."
+                }
+    return None
+
+def missing_market_price_rule(positions) -> dict | None:
+    missing_count = sum(1 for p in positions if getattr(p, "market_price", 0) <= 0)
+    if missing_count > 0:
+        return {
+            "rule": "missing_market_price",
+            "category": "market_data",
+            "severity": "high",
+            "score": 20,
+            "message": f"{missing_count} positions are missing active mark-to-market prices",
+            "action": "Update spot/futures feed or provide manual benchmark prices."
+        }
+    return None
+
+def negative_margin_rule(positions) -> dict | None:
+    negative_margin_count = 0
+    for p in positions:
+        direction = getattr(p, "direction", "").lower()
+        entry = getattr(p, "entry_price", 0)
+        mkt = getattr(p, "market_price", 0)
+        if direction == "long" and mkt < entry:
+            negative_margin_count += 1
+        elif direction == "short" and mkt > entry:
+            negative_margin_count += 1
+
+    if negative_margin_count > 0:
+        return {
+            "rule": "negative_margin",
+            "category": "margin",
+            "severity": "medium",
+            "score": 15,
+            "message": f"{negative_margin_count} positions currently have negative unrealized PnL margin",
+            "action": "Review mark-to-market valuations and collateral requirements."
+        }
+    return None
+
 def evaluate_all_rules(positions, inventory, shipments, counterparties, risk_limits=None):
     findings = []
     
@@ -93,6 +151,19 @@ def evaluate_all_rules(positions, inventory, shipments, counterparties, risk_lim
                 "message": f"Total net long position ({total_pos_qty} MT) exceeds risk limit ({max_qty} MT)",
                 "action": "Trim open long positions or execute short hedges."
             })
+
+    # Additional MVP rules
+    conc_res = high_concentration_rule(positions)
+    if conc_res:
+        findings.append(conc_res)
+
+    mkt_res = missing_market_price_rule(positions)
+    if mkt_res:
+        findings.append(mkt_res)
+
+    margin_res = negative_margin_rule(positions)
+    if margin_res:
+        findings.append(margin_res)
 
     return findings
 

@@ -38,6 +38,26 @@ def create_position(item: PositionCreate, db: Session = Depends(get_db)):
     db.refresh(pos)
     return pos
 
+@router.put("/api/positions/{item_id}", response_model=Position)
+def update_position(item_id: str, item: PositionCreate, db: Session = Depends(get_db)):
+    pos = db.query(PositionModel).filter(PositionModel.id == item_id).first()
+    if not pos:
+        raise HTTPException(status_code=404, detail="Position not found")
+    for k, v in item.model_dump().items():
+        setattr(pos, k, v)
+    db.commit()
+    db.refresh(pos)
+    return pos
+
+@router.delete("/api/positions/{item_id}")
+def delete_position(item_id: str, db: Session = Depends(get_db)):
+    pos = db.query(PositionModel).filter(PositionModel.id == item_id).first()
+    if not pos:
+        raise HTTPException(status_code=404, detail="Position not found")
+    db.delete(pos)
+    db.commit()
+    return {"message": "Position deleted successfully"}
+
 # INVENTORY
 @router.get("/api/inventory", response_model=List[Inventory])
 def list_inventory(commodity: str | None = None, db: Session = Depends(get_db)):
@@ -45,6 +65,14 @@ def list_inventory(commodity: str | None = None, db: Session = Depends(get_db)):
     if commodity:
         query = query.filter(InventoryModel.commodity == commodity)
     return query.all()
+
+@router.post("/api/inventory", response_model=Inventory)
+def create_inventory(item: InventoryCreate, db: Session = Depends(get_db)):
+    inv = InventoryModel(**item.model_dump())
+    db.add(inv)
+    db.commit()
+    db.refresh(inv)
+    return inv
 
 # SHIPMENTS
 @router.get("/api/shipments", response_model=List[Shipment])
@@ -54,10 +82,37 @@ def list_shipments(commodity: str | None = None, db: Session = Depends(get_db)):
         query = query.filter(ShipmentModel.commodity == commodity)
     return query.all()
 
+@router.post("/api/shipments", response_model=Shipment)
+def create_shipment(item: ShipmentCreate, db: Session = Depends(get_db)):
+    shp = ShipmentModel(**item.model_dump())
+    db.add(shp)
+    db.commit()
+    db.refresh(shp)
+    return shp
+
+@router.put("/api/shipments/{item_id}", response_model=Shipment)
+def update_shipment(item_id: str, item: ShipmentCreate, db: Session = Depends(get_db)):
+    shp = db.query(ShipmentModel).filter(ShipmentModel.id == item_id).first()
+    if not shp:
+        raise HTTPException(status_code=404, detail="Shipment not found")
+    for k, v in item.model_dump().items():
+        setattr(shp, k, v)
+    db.commit()
+    db.refresh(shp)
+    return shp
+
 # COUNTERPARTIES
 @router.get("/api/counterparties", response_model=List[Counterparty])
 def list_counterparties(db: Session = Depends(get_db)):
     return db.query(CounterpartyModel).all()
+
+@router.post("/api/counterparties", response_model=Counterparty)
+def create_counterparty(item: CounterpartyCreate, db: Session = Depends(get_db)):
+    cp = CounterpartyModel(**item.model_dump())
+    db.add(cp)
+    db.commit()
+    db.refresh(cp)
+    return cp
 
 # ALERTS
 @router.get("/api/alerts", response_model=List[Alert])
@@ -66,6 +121,22 @@ def list_alerts(commodity: str | None = None, db: Session = Depends(get_db)):
     if commodity:
         query = query.filter(AlertModel.commodity == commodity)
     return query.all()
+
+@router.post("/api/alerts/evaluate")
+def evaluate_alerts(commodity: str = "Copper", db: Session = Depends(get_db)):
+    dashboard = get_dashboard_data_for_commodity(db, commodity)
+    return {"commodity": commodity, "evaluated_alerts_count": len(dashboard.alerts)}
+
+# BRIEFS
+@router.post("/api/briefs/generate")
+def generate_brief_endpoint(commodity: str = "Copper", db: Session = Depends(get_db)):
+    dashboard = get_dashboard_data_for_commodity(db, commodity)
+    return dashboard.ai_brief
+
+@router.get("/api/briefs/latest")
+def get_latest_brief(commodity: str = "Copper", db: Session = Depends(get_db)):
+    dashboard = get_dashboard_data_for_commodity(db, commodity)
+    return dashboard.ai_brief
 
 # UPLOADS
 @router.post("/api/uploads/positions")
