@@ -138,6 +138,20 @@ def get_latest_brief(commodity: str = "Copper", db: Session = Depends(get_db)):
     dashboard = get_dashboard_data_for_commodity(db, commodity)
     return dashboard.ai_brief
 
+@router.post("/api/briefs/export")
+def export_brief_endpoint(commodity: str = "Copper", db: Session = Depends(get_db)):
+    from app.ai.brief_generator import export_brief_to_markdown
+    dashboard = get_dashboard_data_for_commodity(db, commodity)
+    md_text = export_brief_to_markdown(
+        commodity=commodity,
+        market_state=dashboard.decision.market_state,
+        permission=dashboard.decision.permission,
+        risk_score=dashboard.decision.risk_score,
+        evidence_score=dashboard.decision.evidence_score,
+        brief=dashboard.ai_brief.model_dump()
+    )
+    return {"commodity": commodity, "content": md_text}
+
 # UPLOADS
 @router.post("/api/uploads/positions")
 async def upload_positions(file: UploadFile = File(...), db: Session = Depends(get_db)):

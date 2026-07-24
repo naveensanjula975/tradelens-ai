@@ -72,3 +72,35 @@ def generate_ai_brief(commodity: str, market_state: str, permission: str, risk_s
     except Exception as e:
         print(f"OpenAI Generation error: {e}")
         return fallback_brief
+
+def export_brief_to_markdown(commodity: str, market_state: str, permission: str, risk_score: int, evidence_score: int, brief: dict) -> str:
+    why_bullets = "\n".join([f"- {item}" for item in brief.get("why", [])])
+    action_bullets = "\n".join([f"1. {item}" for item in brief.get("next_actions", [])])
+    
+    return f"""# TRADELENS AI - DAILY TRADING BRIEF ({commodity.upper()})
+
+**Market State:** {market_state}  
+**Permission:** {permission.upper()}  
+**Risk Score:** {risk_score} / 100  
+**Evidence Score:** {evidence_score} / 100  
+
+---
+
+### Executive Summary
+**{brief.get('headline')}**
+
+{brief.get('summary')}
+
+---
+
+### Key Evidence & Factors
+{why_bullets}
+
+---
+
+### Recommended Desk Actions
+{action_bullets}
+
+---
+*Generated automatically by TradeLens AI Decision Engine. Decision support only.*
+"""
