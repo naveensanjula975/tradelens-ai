@@ -1,7 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { uploadCSV } from '@/lib/api-client';
+import {
+  CSVImportType,
+  CSVImportValidationError,
+  CSVUploadError,
+  uploadCSV,
+} from '@/lib/api-client';
 import { Upload, FileCheck, AlertCircle } from 'lucide-react';
 
 interface CSVUploadModalProps {
@@ -9,22 +14,46 @@ interface CSVUploadModalProps {
 }
 
 export function CSVUploadModal({ onSuccess }: CSVUploadModalProps) {
-  const [fileType, setFileType] = useState<'positions' | 'inventory' | 'shipments'>('positions');
+  const [fileType, setFileType] = useState<CSVImportType>('positions');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [errors, setErrors] = useState<CSVImportValidationError[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const resetFeedback = () => {
+    setStatus(null);
+    setErrors([]);
+  };
+
+  const handleTypeChange = (type: CSVImportType) => {
+    setFileType(type);
+    setSelectedFile(null);
+    resetFeedback();
+  };
+
+  const handleFileChange = (file: File | null) => {
+    setSelectedFile(file);
+    resetFeedback();
+  };
 
   const handleUpload = async () => {
     if (!selectedFile) return;
     setLoading(true);
-    setStatus(null);
+    resetFeedback();
     try {
       const res = await uploadCSV(fileType, selectedFile);
-      setStatus(res.message || 'Import succeeded');
+      setStatus(`${res.message}: ${res.imported_count} ${res.file_type} record${res.imported_count === 1 ? '' : 's'}`);
       setSelectedFile(null);
       onSuccess();
-    } catch (err: any) {
-      setStatus(`Import failed: ${err.message}`);
+    } catch (error: unknown) {
+      if (error instanceof CSVUploadError) {
+        setStatus(error.message);
+        setErrors(error.errors);
+      } else if (error instanceof Error) {
+        setStatus(error.message);
+      } else {
+        setStatus('Upload failed due to an unexpected error.');
+      }
     } finally {
       setLoading(false);
     }
@@ -41,7 +70,7 @@ export function CSVUploadModal({ onSuccess }: CSVUploadModalProps) {
         {(['positions', 'inventory', 'shipments'] as const).map((type) => (
           <button
             key={type}
-            onClick={() => setFileType(type)}
+            onClick={() => handleTypeChange(type)}
             className={`py-1.5 px-3 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all ${
               fileType === type
                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
@@ -55,9 +84,10 @@ export function CSVUploadModal({ onSuccess }: CSVUploadModalProps) {
 
       <div className="border-2 border-dashed border-gray-700 rounded-xl p-6 text-center hover:border-gray-500 transition-colors mb-4">
         <input
+          key={fileType}
           type="file"
           accept=".csv"
-          onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+          onChange={(event) => handleFileChange(event.target.files?.[0] || null)}
           className="hidden"
           id="csv-file-input"
         />
@@ -73,11 +103,28 @@ export function CSVUploadModal({ onSuccess }: CSVUploadModalProps) {
       {status && (
         <div
           className={`p-3 rounded-lg text-xs mb-4 flex items-center gap-2 ${
-            status.includes('failed') ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+            errors.length > 0 || !status.startsWith('Import completed')
+              ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+              : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
           }`}
         >
-          {status.includes('failed') ? <AlertCircle className="w-4 h-4" /> : <FileCheck className="w-4 h-4" />}
+          {errors.length > 0 || !status.startsWith('Import completed')
+            ? <AlertCircle className="w-4 h-4 shrink-0" />
+            : <FileCheck className="w-4 h-4 shrink-0" />}
           <span>{status}</span>
+        </div>
+      )}
+
+      {errors.length > 0 && (
+        <div className="max-h-48 overflow-y-auto rounded-lg border border-red-500/20 bg-red-500/5 p-3 mb-4">
+          <ul className="space-y-2 text-xs text-red-300">
+            {errors.map((error, index) => (
+              <li key={`${error.row}-${error.column}-${error.code}-${index}`}>
+                <span className="font-semibold">Row {error.row}, {error.column}:</span>{' '}
+                {error.message}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

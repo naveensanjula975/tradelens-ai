@@ -2,6 +2,38 @@ import { DashboardData } from '@/types/domain';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+export type CSVImportType = 'positions' | 'inventory' | 'shipments';
+
+export interface CSVImportValidationError {
+  row: number;
+  column: string;
+  code: string;
+  message: string;
+}
+
+export interface CSVImportResponse {
+  message: string;
+  imported_count: number;
+  file_type: CSVImportType;
+}
+
+interface CSVImportErrorResponse {
+  detail: {
+    message: string;
+    errors: CSVImportValidationError[];
+  };
+}
+
+export class CSVUploadError extends Error {
+  errors: CSVImportValidationError[];
+
+  constructor(message: string, errors: CSVImportValidationError[] = []) {
+    super(message);
+    this.name = 'CSVUploadError';
+    this.errors = errors;
+  }
+}
+
 export async function fetchDashboard(commodity: string = 'Copper'): Promise<DashboardData> {
   try {
     const res = await fetch(`${API_BASE}/api/dashboard/${commodity}`, { cache: 'no-store' });
@@ -13,7 +45,20 @@ export async function fetchDashboard(commodity: string = 'Copper'): Promise<Dash
   }
 }
 
-export async function uploadCSV(type: 'positions' | 'inventory' | 'shipments', file: File): Promise<any> {
+function isCSVImportErrorResponse(value: unknown): value is CSVImportErrorResponse {
+  if (!value || typeof value !== 'object' || !('detail' in value)) return false;
+  const detail = value.detail;
+  return Boolean(
+    detail
+      && typeof detail === 'object'
+      && 'message' in detail
+      && typeof detail.message === 'string'
+      && 'errors' in detail
+      && Array.isArray(detail.errors),
+  );
+}
+
+export async function uploadCSV(type: CSVImportType, file: File): Promise<CSVImportResponse> {
   const formData = new FormData();
   formData.append('file', file);
   const res = await fetch(`${API_BASE}/api/uploads/${type}`, {
@@ -22,11 +67,14 @@ export async function uploadCSV(type: 'positions' | 'inventory' | 'shipments', f
   });
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => null);
-    throw new Error(errorData?.detail || 'Upload failed');
+    const errorData: unknown = await res.json().catch(() => null);
+    if (isCSVImportErrorResponse(errorData)) {
+      throw new CSVUploadError(errorData.detail.message, errorData.detail.errors);
+    }
+    throw new CSVUploadError('Upload failed. Please verify the file and try again.');
   }
 
-  return await res.json();
+  return await res.json() as CSVImportResponse;
 }
 
 function getFallbackDashboardData(commodity: string): DashboardData {
