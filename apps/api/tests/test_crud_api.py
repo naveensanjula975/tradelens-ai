@@ -129,3 +129,70 @@ def test_resource_create_update_delete_lifecycle(
 
     with testing_session() as database:
         assert database.query(model).count() == 0
+
+
+@pytest.mark.parametrize(
+    ("resource", "payload", "error_location"),
+    [
+        (
+            "positions",
+            {
+                "commodity": "Copper",
+                "instrument": "Future",
+                "direction": "Flat",
+                "quantity": 10,
+                "unit": "MT",
+                "entry_price": 9300,
+                "market_price": 9450,
+                "currency": "USD",
+            },
+            "direction",
+        ),
+        (
+            "inventory",
+            {
+                "commodity": "Copper",
+                "location": "Rotterdam",
+                "quantity": 50,
+                "unit": "MT",
+                "minimum_required": 20,
+                "available_quantity": 60,
+            },
+            "body",
+        ),
+        (
+            "shipments",
+            {
+                "commodity": "Copper",
+                "origin": "Chile",
+                "destination": "Singapore",
+                "quantity": 200,
+                "unit": "MT",
+                "expected_arrival": "2026-02-30",
+                "status": "In Transit",
+                "delay_days": -1,
+            },
+            "expected_arrival",
+        ),
+        (
+            "counterparties",
+            {
+                "name": "Global Metals Ltd",
+                "credit_limit": 0,
+                "current_exposure": -1,
+                "risk_rating": "A-",
+            },
+            "credit_limit",
+        ),
+    ],
+)
+def test_create_rejects_invalid_domain_values(
+    isolated_client, resource, payload, error_location
+):
+    client, _ = isolated_client
+
+    response = client.post(f"/api/{resource}", json=payload)
+
+    assert response.status_code == 422
+    locations = [str(part) for error in response.json()["detail"] for part in error["loc"]]
+    assert error_location in locations
