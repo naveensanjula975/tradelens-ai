@@ -20,7 +20,12 @@ export async function uploadCSV(type: 'positions' | 'inventory' | 'shipments', f
     method: 'POST',
     body: formData,
   });
-  if (!res.ok) throw new Error('Upload failed');
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.detail || 'Upload failed');
+  }
+
   return await res.json();
 }
 

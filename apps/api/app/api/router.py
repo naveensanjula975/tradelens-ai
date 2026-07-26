@@ -3,10 +3,10 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.database import get_db
-from app.schemas.entities import DashboardResponse, Position, PositionCreate, Inventory, Shipment, Counterparty, Alert
+from app.schemas.entities import DashboardResponse, Position, PositionCreate, Inventory, InventoryCreate, Shipment, ShipmentCreate, Counterparty, CounterpartyCreate, Alert
 from app.models.entities import PositionModel, InventoryModel, ShipmentModel, CounterpartyModel, AlertModel
 from app.services.dashboard_service import get_dashboard_data_for_commodity
-from app.services.import_service import import_positions_csv, import_inventory_csv, import_shipments_csv
+from app.services.import_service import ImportValidationError, import_positions_csv, import_inventory_csv, import_shipments_csv
 
 router = APIRouter()
 
@@ -156,17 +156,26 @@ def export_brief_endpoint(commodity: str = "Copper", db: Session = Depends(get_d
 @router.post("/api/uploads/positions")
 async def upload_positions(file: UploadFile = File(...), db: Session = Depends(get_db)):
     content = await file.read()
-    count = import_positions_csv(db, content)
+    try:
+        count = import_positions_csv(db, content)
+    except ImportValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"message": f"Successfully imported {count} positions"}
 
 @router.post("/api/uploads/inventory")
 async def upload_inventory(file: UploadFile = File(...), db: Session = Depends(get_db)):
     content = await file.read()
-    count = import_inventory_csv(db, content)
+    try:
+        count = import_inventory_csv(db, content)
+    except ImportValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"message": f"Successfully imported {count} inventory records"}
 
 @router.post("/api/uploads/shipments")
 async def upload_shipments(file: UploadFile = File(...), db: Session = Depends(get_db)):
     content = await file.read()
-    count = import_shipments_csv(db, content)
+    try:
+        count = import_shipments_csv(db, content)
+    except ImportValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"message": f"Successfully imported {count} shipment records"}

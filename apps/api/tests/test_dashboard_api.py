@@ -3,6 +3,17 @@ from app.main import app
 
 client = TestClient(app)
 
+
+def test_upload_positions_rejects_invalid_csv_schema():
+    response = client.post(
+        "/api/uploads/positions",
+        files={"file": ("bad.csv", b"commodity,instrument,direction,quantity,unit,entry_price\nCopper,Physical,Long,100,MT,9300\n", "text/csv")},
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert "missing required columns" in payload["detail"].lower()
+
 def test_health():
     response = client.get("/health")
     assert response.status_code == 200
