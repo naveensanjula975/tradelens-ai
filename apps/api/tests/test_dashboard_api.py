@@ -12,7 +12,7 @@ def test_upload_positions_rejects_invalid_csv_schema():
 
     assert response.status_code == 400
     payload = response.json()
-    assert "missing required columns" in payload["detail"].lower()
+    assert "missing required columns" in payload["detail"]["errors"][0]["message"].lower()
 
 def test_health():
     response = client.get("/health")

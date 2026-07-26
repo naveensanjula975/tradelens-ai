@@ -61,7 +61,7 @@ def get_dashboard_data_for_commodity(db: Session, commodity: str = "Copper") -> 
         blocking_factors=blocking_factors
     )
 
-    alerts_json = [{"severity": a.severity, "title": a.title, "description": a.description} for a a in alerts_list]
+    alerts_json = [{"severity": a.severity, "title": a.title, "description": a.description} for a in alerts_list]
     ai_brief_dict = generate_ai_brief(commodity, market_state, permission, scores["risk_score"], scores["evidence_score"], alerts_json)
 
     return DashboardResponse(

@@ -1,14 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
-from typing import List
+from typing import Callable, List
 
 from app.database import get_db
+from app.config import settings
 from app.schemas.entities import DashboardResponse, Position, PositionCreate, Inventory, InventoryCreate, Shipment, ShipmentCreate, Counterparty, CounterpartyCreate, Alert
 from app.models.entities import PositionModel, InventoryModel, ShipmentModel, CounterpartyModel, AlertModel
 from app.services.dashboard_service import get_dashboard_data_for_commodity
 from app.services.import_service import ImportValidationError, import_positions_csv, import_inventory_csv, import_shipments_csv
 
 router = APIRouter()
+CSV_CONTENT_TYPES = {"text/csv", "application/csv", "application/vnd.ms-excel"}
 
 @router.get("/health")
 def health_check():
@@ -74,6 +76,26 @@ def create_inventory(item: InventoryCreate, db: Session = Depends(get_db)):
     db.refresh(inv)
     return inv
 
+@router.put("/api/inventory/{item_id}", response_model=Inventory)
+def update_inventory(item_id: str, item: InventoryCreate, db: Session = Depends(get_db)):
+    inv = db.query(InventoryModel).filter(InventoryModel.id == item_id).first()
+    if not inv:
+        raise HTTPException(status_code=404, detail="Inventory record not found")
+    for key, value in item.model_dump().items():
+        setattr(inv, key, value)
+    db.commit()
+    db.refresh(inv)
+    return inv
+
+@router.delete("/api/inventory/{item_id}")
+def delete_inventory(item_id: str, db: Session = Depends(get_db)):
+    inv = db.query(InventoryModel).filter(InventoryModel.id == item_id).first()
+    if not inv:
+        raise HTTPException(status_code=404, detail="Inventory record not found")
+    db.delete(inv)
+    db.commit()
+    return {"message": "Inventory record deleted successfully"}
+
 # SHIPMENTS
 @router.get("/api/shipments", response_model=List[Shipment])
 def list_shipments(commodity: str | None = None, db: Session = Depends(get_db)):
@@ -101,6 +123,15 @@ def update_shipment(item_id: str, item: ShipmentCreate, db: Session = Depends(ge
     db.refresh(shp)
     return shp
 
+@router.delete("/api/shipments/{item_id}")
+def delete_shipment(item_id: str, db: Session = Depends(get_db)):
+    shp = db.query(ShipmentModel).filter(ShipmentModel.id == item_id).first()
+    if not shp:
+        raise HTTPException(status_code=404, detail="Shipment not found")
+    db.delete(shp)
+    db.commit()
+    return {"message": "Shipment deleted successfully"}
+
 # COUNTERPARTIES
 @router.get("/api/counterparties", response_model=List[Counterparty])
 def list_counterparties(db: Session = Depends(get_db)):
@@ -113,6 +144,26 @@ def create_counterparty(item: CounterpartyCreate, db: Session = Depends(get_db))
     db.commit()
     db.refresh(cp)
     return cp
+
+@router.put("/api/counterparties/{item_id}", response_model=Counterparty)
+def update_counterparty(item_id: str, item: CounterpartyCreate, db: Session = Depends(get_db)):
+    cp = db.query(CounterpartyModel).filter(CounterpartyModel.id == item_id).first()
+    if not cp:
+        raise HTTPException(status_code=404, detail="Counterparty not found")
+    for key, value in item.model_dump().items():
+        setattr(cp, key, value)
+    db.commit()
+    db.refresh(cp)
+    return cp
+
+@router.delete("/api/counterparties/{item_id}")
+def delete_counterparty(item_id: str, db: Session = Depends(get_db)):
+    cp = db.query(CounterpartyModel).filter(CounterpartyModel.id == item_id).first()
+    if not cp:
+        raise HTTPException(status_code=404, detail="Counterparty not found")
+    db.delete(cp)
+    db.commit()
+    return {"message": "Counterparty deleted successfully"}
 
 # ALERTS
 @router.get("/api/alerts", response_model=List[Alert])
@@ -153,29 +204,56 @@ def export_brief_endpoint(commodity: str = "Copper", db: Session = Depends(get_d
     return {"commodity": commodity, "content": md_text}
 
 # UPLOADS
+async def _process_csv_upload(
+    file: UploadFile,
+    file_type: str,
+    importer: Callable[[Session, bytes], int],
+    db: Session,
+):
+    filename = file.filename or ""
+    if not filename.lower().endswith(".csv") and file.content_type not in CSV_CONTENT_TYPES:
+        raise HTTPException(status_code=400, detail={
+            "message": "CSV validation failed",
+            "errors": [{
+                "row": 1,
+                "column": "file",
+                "code": "invalid_file_type",
+                "message": "Upload must be a CSV file",
+            }],
+        })
+
+    content = await file.read(settings.MAX_CSV_UPLOAD_BYTES + 1)
+    if len(content) > settings.MAX_CSV_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail={
+            "message": "CSV upload is too large",
+            "errors": [{
+                "row": 1,
+                "column": "file",
+                "code": "file_too_large",
+                "message": f"CSV file must not exceed {settings.MAX_CSV_UPLOAD_BYTES} bytes",
+            }],
+        })
+
+    try:
+        count = importer(db, content)
+    except ImportValidationError as exc:
+        raise HTTPException(status_code=400, detail=exc.to_detail()) from exc
+
+    return {
+        "message": "Import completed",
+        "imported_count": count,
+        "file_type": file_type,
+    }
+
+
 @router.post("/api/uploads/positions")
 async def upload_positions(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    content = await file.read()
-    try:
-        count = import_positions_csv(db, content)
-    except ImportValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {"message": f"Successfully imported {count} positions"}
+    return await _process_csv_upload(file, "positions", import_positions_csv, db)
 
 @router.post("/api/uploads/inventory")
 async def upload_inventory(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    content = await file.read()
-    try:
-        count = import_inventory_csv(db, content)
-    except ImportValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {"message": f"Successfully imported {count} inventory records"}
+    return await _process_csv_upload(file, "inventory", import_inventory_csv, db)
 
 @router.post("/api/uploads/shipments")
 async def upload_shipments(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    content = await file.read()
-    try:
-        count = import_shipments_csv(db, content)
-    except ImportValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {"message": f"Successfully imported {count} shipment records"}
+    return await _process_csv_upload(file, "shipments", import_shipments_csv, db)
