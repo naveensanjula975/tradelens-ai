@@ -76,6 +76,26 @@ def create_inventory(item: InventoryCreate, db: Session = Depends(get_db)):
     db.refresh(inv)
     return inv
 
+@router.put("/api/inventory/{item_id}", response_model=Inventory)
+def update_inventory(item_id: str, item: InventoryCreate, db: Session = Depends(get_db)):
+    inv = db.query(InventoryModel).filter(InventoryModel.id == item_id).first()
+    if not inv:
+        raise HTTPException(status_code=404, detail="Inventory record not found")
+    for key, value in item.model_dump().items():
+        setattr(inv, key, value)
+    db.commit()
+    db.refresh(inv)
+    return inv
+
+@router.delete("/api/inventory/{item_id}")
+def delete_inventory(item_id: str, db: Session = Depends(get_db)):
+    inv = db.query(InventoryModel).filter(InventoryModel.id == item_id).first()
+    if not inv:
+        raise HTTPException(status_code=404, detail="Inventory record not found")
+    db.delete(inv)
+    db.commit()
+    return {"message": "Inventory record deleted successfully"}
+
 # SHIPMENTS
 @router.get("/api/shipments", response_model=List[Shipment])
 def list_shipments(commodity: str | None = None, db: Session = Depends(get_db)):
@@ -103,6 +123,15 @@ def update_shipment(item_id: str, item: ShipmentCreate, db: Session = Depends(ge
     db.refresh(shp)
     return shp
 
+@router.delete("/api/shipments/{item_id}")
+def delete_shipment(item_id: str, db: Session = Depends(get_db)):
+    shp = db.query(ShipmentModel).filter(ShipmentModel.id == item_id).first()
+    if not shp:
+        raise HTTPException(status_code=404, detail="Shipment not found")
+    db.delete(shp)
+    db.commit()
+    return {"message": "Shipment deleted successfully"}
+
 # COUNTERPARTIES
 @router.get("/api/counterparties", response_model=List[Counterparty])
 def list_counterparties(db: Session = Depends(get_db)):
@@ -115,6 +144,26 @@ def create_counterparty(item: CounterpartyCreate, db: Session = Depends(get_db))
     db.commit()
     db.refresh(cp)
     return cp
+
+@router.put("/api/counterparties/{item_id}", response_model=Counterparty)
+def update_counterparty(item_id: str, item: CounterpartyCreate, db: Session = Depends(get_db)):
+    cp = db.query(CounterpartyModel).filter(CounterpartyModel.id == item_id).first()
+    if not cp:
+        raise HTTPException(status_code=404, detail="Counterparty not found")
+    for key, value in item.model_dump().items():
+        setattr(cp, key, value)
+    db.commit()
+    db.refresh(cp)
+    return cp
+
+@router.delete("/api/counterparties/{item_id}")
+def delete_counterparty(item_id: str, db: Session = Depends(get_db)):
+    cp = db.query(CounterpartyModel).filter(CounterpartyModel.id == item_id).first()
+    if not cp:
+        raise HTTPException(status_code=404, detail="Counterparty not found")
+    db.delete(cp)
+    db.commit()
+    return {"message": "Counterparty deleted successfully"}
 
 # ALERTS
 @router.get("/api/alerts", response_model=List[Alert])
