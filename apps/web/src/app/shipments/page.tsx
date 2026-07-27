@@ -1,53 +1,139 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { AppSidebar } from '@/components/layout/app-sidebar';
-import { fetchDashboard } from '@/lib/api-client';
+import React, { useState } from 'react';
+import { useShipments } from '@/hooks/use-api';
+import { deleteShipment } from '@/lib/api-client';
+import { PageShell } from '@/components/layout/page-shell';
+import {
+  PageHeader, TableContainer, Thead, LoadingRows, EmptyRow,
+  ActionButton, CommodityFilter, StatusBadge,
+} from '@/components/ui/shared';
+import { ShipmentFormModal } from '@/components/shipments/shipment-form-modal';
 import { Shipment } from '@/types/domain';
+import { Plus, Trash2, Pencil, Truck } from 'lucide-react';
+
+function getShipmentStatusType(status: string): 'danger' | 'warning' | 'info' | 'success' | 'neutral' {
+  const s = status.toLowerCase();
+  if (s === 'delayed') return 'danger';
+  if (s === 'in transit') return 'info';
+  if (s === 'delivered') return 'success';
+  if (s === 'loading') return 'warning';
+  return 'neutral';
+}
 
 export default function ShipmentsPage() {
-  const [shipments, setShipments] = useState<Shipment[]>([]);
+  const [commodity, setCommodity] = useState('Copper');
+  const { data: shipments, loading, refresh } = useShipments(commodity || undefined);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Shipment | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchDashboard('Copper').then((d) => setShipments(d.shipments));
-  }, []);
+  const handleDelete = async (id: string) => {
+    if (!confirm('Delete this shipment?')) return;
+    setDeletingId(id);
+    try {
+      await deleteShipment(id);
+      refresh();
+    } catch {
+      alert('Failed to delete shipment.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleEdit = (s: Shipment) => { setEditing(s); setFormOpen(true); };
+  const handleAdd = () => { setEditing(null); setFormOpen(true); };
+  const handleFormClose = (saved: boolean) => {
+    setFormOpen(false);
+    setEditing(null);
+    if (saved) refresh();
+  };
+
+  const inTransit = shipments.filter(s => s.status.toLowerCase() === 'in transit').length;
+  const delayed = shipments.filter(s => s.delay_days > 0).length;
+  const totalQty = shipments.reduce((s, sh) => s + sh.quantity, 0);
+
+  const cols = ['Commodity', 'Route', 'Quantity', 'Expected Arrival', 'Status', 'Delay', ''];
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
-      <AppSidebar />
-      <div className="flex-1 p-8">
-        <h2 className="text-2xl font-bold mb-6">Logistics & Shipments</h2>
-        <div className="bg-card border border-border rounded-2xl overflow-hidden">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-gray-900/80 text-gray-400 font-semibold border-b border-border">
-              <tr>
-                <th className="p-4">Commodity</th>
-                <th className="p-4">Route</th>
-                <th className="p-4">Quantity</th>
-                <th className="p-4">Expected Arrival</th>
-                <th className="p-4">Status</th>
-                <th className="p-4">Delay (Days)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-800">
-              {shipments.map((s) => (
-                <tr key={s.id} className="hover:bg-gray-800/40">
-                  <td className="p-4 font-bold text-white">{s.commodity}</td>
-                  <td className="p-4">{s.origin} → {s.destination}</td>
-                  <td className="p-4 font-medium">{s.quantity} {s.unit}</td>
-                  <td className="p-4">{s.expected_arrival}</td>
-                  <td className="p-4">
-                    <span className={`px-2 py-0.5 rounded font-bold ${s.status === 'Delayed' ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
-                      {s.status}
-                    </span>
-                  </td>
-                  <td className="p-4 font-semibold text-amber-400">{s.delay_days} days</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+    <PageShell>
+      <PageHeader
+        title="Logistics & Shipments"
+        subtitle="Track commodity shipment routes, ETAs, and delay status"
+      >
+        <CommodityFilter value={commodity} onChange={setCommodity} />
+        <ActionButton variant="primary" onClick={handleAdd}>
+          <Plus className="w-3.5 h-3.5" /> Add Shipment
+        </ActionButton>
+      </PageHeader>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4 mx-6 mb-5">
+        {[
+          { label: 'In Transit', value: inTransit, color: 'text-blue-400' },
+          { label: 'Delayed', value: delayed, color: delayed > 0 ? 'text-red-400' : 'text-emerald-400' },
+          { label: 'Total Volume', value: `${totalQty.toLocaleString()} MT`, color: 'text-gray-200' },
+        ].map((s) => (
+          <div key={s.label} className="p-4 rounded-xl border text-center" style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
+            <p className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">{s.label}</p>
+            <p className={`text-lg font-black ${s.color}`}>{s.value}</p>
+          </div>
+        ))}
       </div>
-    </div>
+
+      <TableContainer>
+        <Thead columns={cols} />
+        {loading ? (
+          <LoadingRows cols={cols.length} />
+        ) : shipments.length === 0 ? (
+          <EmptyRow message="No shipments found. Add a shipment or upload a CSV." cols={cols.length} />
+        ) : (
+          <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
+            {shipments.map((s) => (
+              <tr key={s.id} className="hover:bg-white/[0.02] transition-colors group">
+                <td className="px-4 py-3 font-bold text-white">{s.commodity}</td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1.5 text-gray-300">
+                    <span className="font-semibold">{s.origin}</span>
+                    <Truck className="w-3 h-3 text-gray-600 shrink-0" />
+                    <span className="font-semibold">{s.destination}</span>
+                  </div>
+                </td>
+                <td className="px-4 py-3 font-semibold text-gray-200">{s.quantity.toLocaleString()} {s.unit}</td>
+                <td className="px-4 py-3 text-gray-400">{s.expected_arrival}</td>
+                <td className="px-4 py-3">
+                  <StatusBadge label={s.status} type={getShipmentStatusType(s.status)} />
+                </td>
+                <td className="px-4 py-3">
+                  {s.delay_days > 0 ? (
+                    <span className="text-xs font-bold text-red-400">+{s.delay_days}d</span>
+                  ) : (
+                    <span className="text-xs text-emerald-400 font-semibold">On time</span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <ActionButton size="xs" variant="ghost" onClick={() => handleEdit(s)}>
+                      <Pencil className="w-3 h-3" />
+                    </ActionButton>
+                    <ActionButton size="xs" variant="danger" onClick={() => handleDelete(s.id)} disabled={deletingId === s.id}>
+                      <Trash2 className="w-3 h-3" />
+                    </ActionButton>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        )}
+      </TableContainer>
+
+      {formOpen && (
+        <ShipmentFormModal
+          existing={editing}
+          defaultCommodity={commodity || 'Copper'}
+          onClose={handleFormClose}
+        />
+      )}
+    </PageShell>
   );
 }

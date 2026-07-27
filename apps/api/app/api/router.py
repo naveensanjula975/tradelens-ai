@@ -257,3 +257,41 @@ async def upload_inventory(file: UploadFile = File(...), db: Session = Depends(g
 @router.post("/api/uploads/shipments")
 async def upload_shipments(file: UploadFile = File(...), db: Session = Depends(get_db)):
     return await _process_csv_upload(file, "shipments", import_shipments_csv, db)
+
+# SNAPSHOT TASKS
+@router.post("/api/snapshots/run")
+def run_all_snapshots(db: Session = Depends(get_db)):
+    from app.tasks.snapshots import snapshot_all_commodities
+    results = snapshot_all_commodities(db)
+    return {"message": "Snapshot run completed", "results": results}
+
+@router.delete("/api/snapshots/purge")
+def purge_snapshots(keep_last_n: int = 50, db: Session = Depends(get_db)):
+    from app.tasks.snapshots import purge_old_snapshots
+    deleted = purge_old_snapshots(db, keep_last_n=keep_last_n)
+    return {"message": f"Purged {deleted} old snapshot records"}
+
+# DECISION HISTORY
+@router.get("/api/decision-history")
+def get_decision_history(commodity: str = "Copper", limit: int = 20, db: Session = Depends(get_db)):
+    from app.models.entities import DecisionSnapshotModel
+    rows = (
+        db.query(DecisionSnapshotModel)
+        .filter(DecisionSnapshotModel.commodity == commodity)
+        .order_by(DecisionSnapshotModel.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "id": r.id,
+            "commodity": r.commodity,
+            "market_state": r.market_state,
+            "permission": r.permission,
+            "evidence_score": r.evidence_score,
+            "risk_score": r.risk_score,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rows
+    ]
+
