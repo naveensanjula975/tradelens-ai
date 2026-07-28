@@ -1,4 +1,4 @@
-import { DashboardData, Position, Inventory, Shipment, Counterparty, Alert, MarketEvent, RiskLimit, DecisionHistoryEntry, SimulationParams, SimulationResult } from '@/types/domain';
+import { DashboardData, Position, Inventory, Shipment, Counterparty, Alert, MarketEvent, RiskLimit, DecisionHistoryEntry, SimulationParams, SimulationResult, PortfolioAnalytics } from '@/types/domain';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -259,6 +259,12 @@ export async function evaluateSimulation(params: SimulationParams): Promise<Simu
     method: 'POST',
     body: JSON.stringify(params),
   });
+}
+
+// ── Portfolio Analytics ───────────────────────────────────────────────────────
+
+export async function fetchAnalyticsSummary(): Promise<PortfolioAnalytics> {
+  return apiFetch<PortfolioAnalytics>('/api/analytics/summary');
 }
 
 // ── Fallback data ──────────────────────────────────────────────────────────────

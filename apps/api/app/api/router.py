@@ -365,3 +365,10 @@ def evaluate_scenario_simulation(payload: dict, db: Session = Depends(get_db)):
         added_shipment_delay_days=added_shipment_delay_days,
         counterparty_exposure_shift_pct=counterparty_exposure_shift_pct,
     )
+
+
+# PORTFOLIO ANALYTICS
+@router.get("/api/analytics/summary")
+def get_analytics_summary(db: Session = Depends(get_db)):
+    from app.services.analytics_service import get_portfolio_analytics_summary
+    return get_portfolio_analytics_summary(db)
