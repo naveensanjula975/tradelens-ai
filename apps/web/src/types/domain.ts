@@ -83,3 +83,76 @@ export interface DashboardData {
   shipments: Shipment[];
   counterparties: Counterparty[];
 }
+
+// ── New domain types ──────────────────────────────────────────────────────────
+
+export interface MarketEvent {
+  id: string;
+  commodity: string;
+  title: string;
+  impact_level: 'High' | 'Medium' | 'Low';
+  description: string;
+  source: string;
+  date: string;
+}
+
+export interface RiskLimit {
+  id: string;
+  commodity: string;
+  max_position_quantity: number;
+  max_counterparty_exposure_pct: number;
+  min_inventory_days: number;
+}
+
+export interface DecisionHistoryEntry {
+  id: string;
+  commodity: string;
+  market_state: string;
+  permission: 'Allowed' | 'Limited' | 'Blocked' | 'Review Required';
+  evidence_score: number;
+  risk_score: number;
+  created_at: string;
+}
+
+export interface SimulationParams {
+  commodity: string;
+  price_shift_pct: number;
+  inventory_shift_pct: number;
+  added_shipment_delay_days: number;
+  counterparty_exposure_shift_pct: number;
+}
+
+export interface SimulationResult {
+  commodity: string;
+  parameters: SimulationParams;
+  baseline: {
+    permission: string;
+    market_state: string;
+    evidence_score: number;
+    risk_score: number;
+    findings_count: number;
+    critical_findings_count: number;
+  };
+  simulated: {
+    permission: string;
+    market_state: string;
+    evidence_score: number;
+    risk_score: number;
+    findings_count: number;
+    critical_findings_count: number;
+  };
+  delta: {
+    risk_score_change: number;
+    evidence_score_change: number;
+    permission_changed: boolean;
+    new_findings: Array<{
+      rule: string;
+      category: string;
+      severity: string;
+      score: number;
+      message: string;
+      action?: string;
+    }>;
+  };
+}
+

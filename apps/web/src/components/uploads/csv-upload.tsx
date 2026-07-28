@@ -60,7 +60,7 @@ export function CSVUploadModal({ onSuccess }: CSVUploadModalProps) {
   };
 
   return (
-    <div className="p-6 rounded-2xl bg-card border border-border">
+    <div className="p-6 rounded-2xl border" style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
       <div className="flex items-center gap-2 mb-4">
         <Upload className="w-5 h-5 text-blue-400" />
         <h4 className="font-bold text-sm text-white">Import Fragmented Trade Data (CSV)</h4>

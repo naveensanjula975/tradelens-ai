@@ -257,3 +257,111 @@ async def upload_inventory(file: UploadFile = File(...), db: Session = Depends(g
 @router.post("/api/uploads/shipments")
 async def upload_shipments(file: UploadFile = File(...), db: Session = Depends(get_db)):
     return await _process_csv_upload(file, "shipments", import_shipments_csv, db)
+
+# SNAPSHOT TASKS
+@router.post("/api/snapshots/run")
+def run_all_snapshots(db: Session = Depends(get_db)):
+    from app.tasks.snapshots import snapshot_all_commodities
+    results = snapshot_all_commodities(db)
+    return {"message": "Snapshot run completed", "results": results}
+
+@router.delete("/api/snapshots/purge")
+def purge_snapshots(keep_last_n: int = 50, db: Session = Depends(get_db)):
+    from app.tasks.snapshots import purge_old_snapshots
+    deleted = purge_old_snapshots(db, keep_last_n=keep_last_n)
+    return {"message": f"Purged {deleted} old snapshot records"}
+
+# DECISION HISTORY
+@router.get("/api/decision-history")
+def get_decision_history(commodity: str = "Copper", limit: int = 20, db: Session = Depends(get_db)):
+    from app.models.entities import DecisionSnapshotModel
+    rows = (
+        db.query(DecisionSnapshotModel)
+        .filter(DecisionSnapshotModel.commodity == commodity)
+        .order_by(DecisionSnapshotModel.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "id": r.id,
+            "commodity": r.commodity,
+            "market_state": r.market_state,
+            "permission": r.permission,
+            "evidence_score": r.evidence_score,
+            "risk_score": r.risk_score,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rows
+    ]
+
+
+# MARKET EVENTS
+@router.get("/api/market-events")
+def list_market_events(commodity: str | None = None, limit: int = 50, db: Session = Depends(get_db)):
+    from app.models.entities import MarketEventModel
+    q = db.query(MarketEventModel)
+    if commodity:
+        q = q.filter(MarketEventModel.commodity == commodity)
+    return q.order_by(MarketEventModel.date.desc()).limit(limit).all()
+
+@router.post("/api/market-events")
+def create_market_event(data: dict, db: Session = Depends(get_db)):
+    from app.models.entities import MarketEventModel
+    event = MarketEventModel(**data)
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    return event
+
+@router.delete("/api/market-events/{event_id}")
+def delete_market_event(event_id: str, db: Session = Depends(get_db)):
+    from app.models.entities import MarketEventModel
+    event = db.query(MarketEventModel).filter(MarketEventModel.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Market event not found")
+    db.delete(event)
+    db.commit()
+    return {"message": "Market event deleted successfully"}
+
+
+# RISK LIMITS
+@router.get("/api/risk-limits")
+def list_risk_limits(db: Session = Depends(get_db)):
+    from app.models.entities import RiskLimitModel
+    return db.query(RiskLimitModel).all()
+
+@router.put("/api/risk-limits/{commodity}")
+def upsert_risk_limit(commodity: str, data: dict, db: Session = Depends(get_db)):
+    from app.models.entities import RiskLimitModel
+    limit = db.query(RiskLimitModel).filter(RiskLimitModel.commodity == commodity).first()
+    if limit:
+        for k, v in data.items():
+            if k != "commodity":
+                setattr(limit, k, v)
+    else:
+        limit = RiskLimitModel(commodity=commodity, **{k: v for k, v in data.items() if k != "commodity"})
+        db.add(limit)
+    db.commit()
+    db.refresh(limit)
+    return limit
+
+
+# SCENARIO SIMULATION
+@router.post("/api/simulation/evaluate")
+def evaluate_scenario_simulation(payload: dict, db: Session = Depends(get_db)):
+    from app.engines.simulation.simulator import run_scenario_simulation
+    commodity = payload.get("commodity", "Copper")
+    price_shift_pct = float(payload.get("price_shift_pct", 0.0))
+    inventory_shift_pct = float(payload.get("inventory_shift_pct", 0.0))
+    added_shipment_delay_days = int(payload.get("added_shipment_delay_days", 0))
+    counterparty_exposure_shift_pct = float(payload.get("counterparty_exposure_shift_pct", 0.0))
+
+    return run_scenario_simulation(
+        db,
+        commodity=commodity,
+        price_shift_pct=price_shift_pct,
+        inventory_shift_pct=inventory_shift_pct,
+        added_shipment_delay_days=added_shipment_delay_days,
+        counterparty_exposure_shift_pct=counterparty_exposure_shift_pct,
+    )
