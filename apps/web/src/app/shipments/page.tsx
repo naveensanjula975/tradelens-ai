@@ -10,7 +10,8 @@ import {
 } from '@/components/ui/shared';
 import { ShipmentFormModal } from '@/components/shipments/shipment-form-modal';
 import { Shipment } from '@/types/domain';
-import { Plus, Trash2, Pencil, Truck } from 'lucide-react';
+import { Plus, Trash2, Pencil, Truck, Download, Search } from 'lucide-react';
+import { exportToCSV } from '@/lib/export-csv';
 
 function getShipmentStatusType(status: string): 'danger' | 'warning' | 'info' | 'success' | 'neutral' {
   const s = status.toLowerCase();
@@ -23,10 +24,25 @@ function getShipmentStatusType(status: string): 'danger' | 'warning' | 'info' | 
 
 export default function ShipmentsPage() {
   const [commodity, setCommodity] = useState('Copper');
+  const [search, setSearch] = useState('');
   const { data: shipments, loading, refresh } = useShipments(commodity || undefined);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Shipment | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const filtered = shipments.filter(s => {
+    const q = search.toLowerCase();
+    return (
+      s.origin.toLowerCase().includes(q) ||
+      s.destination.toLowerCase().includes(q) ||
+      s.status.toLowerCase().includes(q) ||
+      s.commodity.toLowerCase().includes(q)
+    );
+  });
+
+  const handleExportCSV = () => {
+    exportToCSV(filtered, `shipments-${commodity.toLowerCase()}`);
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this shipment?')) return;
@@ -58,10 +74,24 @@ export default function ShipmentsPage() {
   return (
     <PageShell>
       <PageHeader
-        title="Logistics & Shipments"
-        subtitle="Track commodity shipment routes, ETAs, and delay status"
+        title="In-Transit Shipments"
+        subtitle="Vessel and freight logistics, ETAs, and delay tracking"
       >
         <CommodityFilter value={commodity} onChange={setCommodity} />
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <input
+            type="text"
+            placeholder="Search route/status..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="text-xs text-white rounded-lg pl-8 pr-3 py-1.5 border focus:outline-none w-44"
+            style={{ background: 'var(--card)', borderColor: 'var(--border)' }}
+          />
+        </div>
+        <ActionButton variant="ghost" onClick={handleExportCSV}>
+          <Download className="w-3.5 h-3.5" /> CSV
+        </ActionButton>
         <ActionButton variant="primary" onClick={handleAdd}>
           <Plus className="w-3.5 h-3.5" /> Add Shipment
         </ActionButton>
@@ -85,11 +115,11 @@ export default function ShipmentsPage() {
         <Thead columns={cols} />
         {loading ? (
           <LoadingRows cols={cols.length} />
-        ) : shipments.length === 0 ? (
-          <EmptyRow message="No shipments found. Add a shipment or upload a CSV." cols={cols.length} />
+        ) : filtered.length === 0 ? (
+          <EmptyRow message="No shipments match current filter." cols={cols.length} />
         ) : (
           <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
-            {shipments.map((s) => (
+            {filtered.map((s) => (
               <tr key={s.id} className="hover:bg-white/[0.02] transition-colors group">
                 <td className="px-4 py-3 font-bold text-white">{s.commodity}</td>
                 <td className="px-4 py-3">

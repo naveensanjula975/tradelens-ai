@@ -1,4 +1,4 @@
-import { DashboardData, Position, Inventory, Shipment, Counterparty, Alert, MarketEvent, RiskLimit, DecisionHistoryEntry } from '@/types/domain';
+import { DashboardData, Position, Inventory, Shipment, Counterparty, Alert, MarketEvent, RiskLimit, DecisionHistoryEntry, SimulationParams, SimulationResult } from '@/types/domain';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -250,6 +250,15 @@ export async function listDecisionHistory(commodity: string, limit = 30): Promis
 
 export async function exportBrief(commodity: string): Promise<{ commodity: string; content: string }> {
   return apiFetch(`/api/briefs/export?commodity=${encodeURIComponent(commodity)}`, { method: 'POST' });
+}
+
+// ── Scenario Simulation ───────────────────────────────────────────────────────
+
+export async function evaluateSimulation(params: SimulationParams): Promise<SimulationResult> {
+  return apiFetch<SimulationResult>('/api/simulation/evaluate', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
 }
 
 // ── Fallback data ──────────────────────────────────────────────────────────────

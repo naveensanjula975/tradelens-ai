@@ -10,14 +10,29 @@ import {
 } from '@/components/ui/shared';
 import { PositionFormModal } from '@/components/positions/position-form-modal';
 import { Position } from '@/types/domain';
-import { Plus, Trash2, Pencil, TrendingUp, TrendingDown } from 'lucide-react';
+import { Plus, Trash2, Pencil, TrendingUp, TrendingDown, Download, Search } from 'lucide-react';
+import { exportToCSV } from '@/lib/export-csv';
 
 export default function PositionsPage() {
   const [commodity, setCommodity] = useState('Copper');
+  const [search, setSearch] = useState('');
   const { data: positions, loading, refresh } = usePositions(commodity || undefined);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Position | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const filtered = positions.filter(p => {
+    const q = search.toLowerCase();
+    return (
+      p.instrument.toLowerCase().includes(q) ||
+      p.commodity.toLowerCase().includes(q) ||
+      (p.counterparty && p.counterparty.toLowerCase().includes(q))
+    );
+  });
+
+  const handleExportCSV = () => {
+    exportToCSV(filtered, `positions-${commodity.toLowerCase()}`);
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this position?')) return;
@@ -57,7 +72,22 @@ export default function PositionsPage() {
         subtitle="Active commodity trading positions and mark-to-market valuations"
       >
         <CommodityFilter value={commodity} onChange={setCommodity} />
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <input
+            type="text"
+            placeholder="Search positions..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="text-xs text-white rounded-lg pl-8 pr-3 py-1.5 border focus:outline-none w-44"
+            style={{ background: 'var(--card)', borderColor: 'var(--border)' }}
+          />
+        </div>
+        <ActionButton variant="ghost" onClick={handleExportCSV}>
+          <Download className="w-3.5 h-3.5" /> CSV
+        </ActionButton>
         <ActionButton variant="primary" onClick={handleAdd}>
+
           <Plus className="w-3.5 h-3.5" /> Add Position
         </ActionButton>
       </PageHeader>
@@ -80,11 +110,11 @@ export default function PositionsPage() {
         <Thead columns={cols} />
         {loading ? (
           <LoadingRows cols={cols.length} />
-        ) : positions.length === 0 ? (
-          <EmptyRow message="No positions found. Add a position or upload a CSV." cols={cols.length} />
+        ) : filtered.length === 0 ? (
+          <EmptyRow message="No positions match current filter." cols={cols.length} />
         ) : (
           <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
-            {positions.map((p) => {
+            {filtered.map((p) => {
               const isLong = p.direction.toLowerCase() === 'long';
               const pnl = p.quantity * (p.market_price - p.entry_price) * (isLong ? 1 : -1);
               const pnlPct = ((p.market_price - p.entry_price) / p.entry_price) * 100 * (isLong ? 1 : -1);

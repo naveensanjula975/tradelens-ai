@@ -10,7 +10,8 @@ import {
 } from '@/components/ui/shared';
 import { CounterpartyFormModal } from '@/components/counterparties/counterparty-form-modal';
 import { Counterparty } from '@/types/domain';
-import { Plus, Trash2, Pencil } from 'lucide-react';
+import { Plus, Trash2, Pencil, Download, Search } from 'lucide-react';
+import { exportToCSV } from '@/lib/export-csv';
 
 function getRatingType(rating: string): 'success' | 'warning' | 'danger' | 'info' | 'neutral' {
   if (rating.startsWith('A')) return 'success';
@@ -20,10 +21,20 @@ function getRatingType(rating: string): 'success' | 'warning' | 'danger' | 'info
 }
 
 export default function CounterpartiesPage() {
+  const [search, setSearch] = useState('');
   const { data: counterparties, loading, refresh } = useCounterparties();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Counterparty | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const filtered = counterparties.filter(cp => {
+    const q = search.toLowerCase();
+    return cp.name.toLowerCase().includes(q) || cp.risk_rating.toLowerCase().includes(q);
+  });
+
+  const handleExportCSV = () => {
+    exportToCSV(filtered, 'counterparties');
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this counterparty?')) return;
@@ -59,7 +70,22 @@ export default function CounterpartiesPage() {
         title="Counterparty Credit Exposures"
         subtitle="Credit limit utilization and risk-rated counterparty portfolio"
       >
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <input
+            type="text"
+            placeholder="Search counterparty..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="text-xs text-white rounded-lg pl-8 pr-3 py-1.5 border focus:outline-none w-48"
+            style={{ background: 'var(--card)', borderColor: 'var(--border)' }}
+          />
+        </div>
+        <ActionButton variant="ghost" onClick={handleExportCSV}>
+          <Download className="w-3.5 h-3.5" /> CSV
+        </ActionButton>
         <ActionButton variant="primary" onClick={handleAdd}>
+
           <Plus className="w-3.5 h-3.5" /> Add Counterparty
         </ActionButton>
       </PageHeader>
@@ -83,11 +109,11 @@ export default function CounterpartiesPage() {
         <Thead columns={cols} />
         {loading ? (
           <LoadingRows cols={cols.length} />
-        ) : counterparties.length === 0 ? (
-          <EmptyRow message="No counterparties found." cols={cols.length} />
+        ) : filtered.length === 0 ? (
+          <EmptyRow message="No counterparties match current filter." cols={cols.length} />
         ) : (
           <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
-            {counterparties.map((cp) => {
+            {filtered.map((cp) => {
               const util = cp.credit_limit > 0 ? Math.round((cp.current_exposure / cp.credit_limit) * 100) : 0;
               const headroom = cp.credit_limit - cp.current_exposure;
               const utilType = util >= 90 ? 'danger' : util >= 80 ? 'warning' : 'success';

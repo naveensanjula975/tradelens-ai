@@ -10,14 +10,25 @@ import {
 } from '@/components/ui/shared';
 import { InventoryFormModal } from '@/components/inventory/inventory-form-modal';
 import { Inventory } from '@/types/domain';
-import { Plus, Trash2, Pencil, Package } from 'lucide-react';
+import { Plus, Trash2, Pencil, Package, Download, Search } from 'lucide-react';
+import { exportToCSV } from '@/lib/export-csv';
 
 export default function InventoryPage() {
   const [commodity, setCommodity] = useState('Copper');
+  const [search, setSearch] = useState('');
   const { data: inventory, loading, refresh } = useInventory(commodity || undefined);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Inventory | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const filtered = inventory.filter(i => {
+    const q = search.toLowerCase();
+    return i.location.toLowerCase().includes(q) || i.commodity.toLowerCase().includes(q);
+  });
+
+  const handleExportCSV = () => {
+    exportToCSV(filtered, `inventory-${commodity.toLowerCase()}`);
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this inventory record?')) return;
@@ -54,7 +65,22 @@ export default function InventoryPage() {
         subtitle="Warehouse and vault inventory levels vs minimum required thresholds"
       >
         <CommodityFilter value={commodity} onChange={setCommodity} />
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <input
+            type="text"
+            placeholder="Search location..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="text-xs text-white rounded-lg pl-8 pr-3 py-1.5 border focus:outline-none w-44"
+            style={{ background: 'var(--card)', borderColor: 'var(--border)' }}
+          />
+        </div>
+        <ActionButton variant="ghost" onClick={handleExportCSV}>
+          <Download className="w-3.5 h-3.5" /> CSV
+        </ActionButton>
         <ActionButton variant="primary" onClick={handleAdd}>
+
           <Plus className="w-3.5 h-3.5" /> Add Record
         </ActionButton>
       </PageHeader>
@@ -77,11 +103,11 @@ export default function InventoryPage() {
         <Thead columns={cols} />
         {loading ? (
           <LoadingRows cols={cols.length} />
-        ) : inventory.length === 0 ? (
-          <EmptyRow message="No inventory records found. Add a record or upload a CSV." cols={cols.length} />
+        ) : filtered.length === 0 ? (
+          <EmptyRow message="No inventory records match current filter." cols={cols.length} />
         ) : (
           <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
-            {inventory.map((inv) => {
+            {filtered.map((inv) => {
               const coverage = inv.minimum_required > 0
                 ? Math.round((inv.available_quantity / inv.minimum_required) * 100)
                 : 100;

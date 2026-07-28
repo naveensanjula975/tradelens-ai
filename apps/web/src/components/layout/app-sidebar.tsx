@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Layers, Truck, Users, Bell, Settings, Cpu, Package, Zap, History } from 'lucide-react';
+import { LayoutDashboard, Layers, Truck, Users, Bell, Settings, Cpu, Package, Zap, History, Sliders } from 'lucide-react';
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -17,6 +17,7 @@ export function AppSidebar() {
     { label: 'Alerts', href: '/alerts', icon: Bell },
     { label: 'Market Events', href: '/market-events', icon: Zap },
     { label: 'Decision History', href: '/decision-history', icon: History },
+    { label: 'Scenario Simulator', href: '/simulation', icon: Sliders },
     { label: 'Settings', href: '/settings', icon: Settings },
   ];
 

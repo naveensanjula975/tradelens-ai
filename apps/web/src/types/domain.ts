@@ -113,3 +113,46 @@ export interface DecisionHistoryEntry {
   risk_score: number;
   created_at: string;
 }
+
+export interface SimulationParams {
+  commodity: string;
+  price_shift_pct: number;
+  inventory_shift_pct: number;
+  added_shipment_delay_days: number;
+  counterparty_exposure_shift_pct: number;
+}
+
+export interface SimulationResult {
+  commodity: string;
+  parameters: SimulationParams;
+  baseline: {
+    permission: string;
+    market_state: string;
+    evidence_score: number;
+    risk_score: number;
+    findings_count: number;
+    critical_findings_count: number;
+  };
+  simulated: {
+    permission: string;
+    market_state: string;
+    evidence_score: number;
+    risk_score: number;
+    findings_count: number;
+    critical_findings_count: number;
+  };
+  delta: {
+    risk_score_change: number;
+    evidence_score_change: number;
+    permission_changed: boolean;
+    new_findings: Array<{
+      rule: string;
+      category: string;
+      severity: string;
+      score: number;
+      message: string;
+      action?: string;
+    }>;
+  };
+}
+

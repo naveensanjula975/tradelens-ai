@@ -345,3 +345,23 @@ def upsert_risk_limit(commodity: str, data: dict, db: Session = Depends(get_db))
     db.commit()
     db.refresh(limit)
     return limit
+
+
+# SCENARIO SIMULATION
+@router.post("/api/simulation/evaluate")
+def evaluate_scenario_simulation(payload: dict, db: Session = Depends(get_db)):
+    from app.engines.simulation.simulator import run_scenario_simulation
+    commodity = payload.get("commodity", "Copper")
+    price_shift_pct = float(payload.get("price_shift_pct", 0.0))
+    inventory_shift_pct = float(payload.get("inventory_shift_pct", 0.0))
+    added_shipment_delay_days = int(payload.get("added_shipment_delay_days", 0))
+    counterparty_exposure_shift_pct = float(payload.get("counterparty_exposure_shift_pct", 0.0))
+
+    return run_scenario_simulation(
+        db,
+        commodity=commodity,
+        price_shift_pct=price_shift_pct,
+        inventory_shift_pct=inventory_shift_pct,
+        added_shipment_delay_days=added_shipment_delay_days,
+        counterparty_exposure_shift_pct=counterparty_exposure_shift_pct,
+    )
