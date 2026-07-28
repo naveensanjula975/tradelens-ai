@@ -8,8 +8,12 @@ import {
   listShipments,
   listCounterparties,
   listAlerts,
+  listMarketEvents,
+  listDecisionHistory,
+  listRiskLimits,
 } from '@/lib/api-client';
-import type { DashboardData, Position, Inventory, Shipment, Counterparty, Alert } from '@/types/domain';
+import type { DashboardData, Position, Inventory, Shipment, Counterparty, Alert, MarketEvent, DecisionHistoryEntry, RiskLimit } from '@/types/domain';
+
 
 // ── Dashboard hook ─────────────────────────────────────────────────────────────
 
@@ -158,5 +162,74 @@ export function useAlerts(commodity?: string) {
 
   useEffect(() => { load(); }, [load]);
 
+  return { data, loading, error, refresh: load };
+}
+
+// ── Market Events hook ───────────────────────────────────────────────
+
+export function useMarketEvents(commodity?: string) {
+  const [data, setData] = useState<MarketEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setData(await listMarketEvents(commodity));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load market events');
+    } finally {
+      setLoading(false);
+    }
+  }, [commodity]);
+
+  useEffect(() => { load(); }, [load]);
+  return { data, loading, error, refresh: load };
+}
+
+// ── Decision History hook ────────────────────────────────────────────
+
+export function useDecisionHistory(commodity: string, limit = 30) {
+  const [data, setData] = useState<DecisionHistoryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setData(await listDecisionHistory(commodity, limit));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load decision history');
+    } finally {
+      setLoading(false);
+    }
+  }, [commodity, limit]);
+
+  useEffect(() => { load(); }, [load]);
+  return { data, loading, error, refresh: load };
+}
+
+// ── Risk Limits hook ──────────────────────────────────────────────────────
+
+export function useRiskLimits() {
+  const [data, setData] = useState<RiskLimit[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setData(await listRiskLimits());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load risk limits');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
   return { data, loading, error, refresh: load };
 }

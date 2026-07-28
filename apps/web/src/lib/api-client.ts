@@ -1,4 +1,4 @@
-import { DashboardData, Position, Inventory, Shipment, Counterparty, Alert } from '@/types/domain';
+import { DashboardData, Position, Inventory, Shipment, Counterparty, Alert, MarketEvent, RiskLimit, DecisionHistoryEntry } from '@/types/domain';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -196,6 +196,54 @@ export async function uploadCSV(type: CSVImportType, file: File): Promise<CSVImp
   }
 
   return (await res.json()) as CSVImportResponse;
+}
+
+// ── Market Events ─────────────────────────────────────────────────────────────
+
+export async function listMarketEvents(commodity?: string): Promise<MarketEvent[]> {
+  const qs = commodity ? `?commodity=${encodeURIComponent(commodity)}` : '';
+  try {
+    return await apiFetch<MarketEvent[]>(`/api/market-events${qs}`);
+  } catch {
+    return [];
+  }
+}
+
+export async function createMarketEvent(data: Omit<MarketEvent, 'id'>): Promise<MarketEvent> {
+  return apiFetch<MarketEvent>('/api/market-events', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function deleteMarketEvent(id: string): Promise<void> {
+  await apiFetch<unknown>(`/api/market-events/${id}`, { method: 'DELETE' });
+}
+
+// ── Risk Limits ────────────────────────────────────────────────────────────────
+
+export async function listRiskLimits(): Promise<RiskLimit[]> {
+  try {
+    return await apiFetch<RiskLimit[]>('/api/risk-limits');
+  } catch {
+    return [];
+  }
+}
+
+export async function upsertRiskLimit(commodity: string, data: Omit<RiskLimit, 'id' | 'commodity'>): Promise<RiskLimit> {
+  return apiFetch<RiskLimit>(`/api/risk-limits/${encodeURIComponent(commodity)}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+// ── Decision History ───────────────────────────────────────────────────────────
+
+export async function listDecisionHistory(commodity: string, limit = 30): Promise<DecisionHistoryEntry[]> {
+  try {
+    return await apiFetch<DecisionHistoryEntry[]>(
+      `/api/decision-history?commodity=${encodeURIComponent(commodity)}&limit=${limit}`
+    );
+  } catch {
+    return [];
+  }
 }
 
 // ── Brief export ───────────────────────────────────────────────────────────────

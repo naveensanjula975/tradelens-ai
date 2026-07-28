@@ -83,3 +83,33 @@ export interface DashboardData {
   shipments: Shipment[];
   counterparties: Counterparty[];
 }
+
+// ── New domain types ──────────────────────────────────────────────────────────
+
+export interface MarketEvent {
+  id: string;
+  commodity: string;
+  title: string;
+  impact_level: 'High' | 'Medium' | 'Low';
+  description: string;
+  source: string;
+  date: string;
+}
+
+export interface RiskLimit {
+  id: string;
+  commodity: string;
+  max_position_quantity: number;
+  max_counterparty_exposure_pct: number;
+  min_inventory_days: number;
+}
+
+export interface DecisionHistoryEntry {
+  id: string;
+  commodity: string;
+  market_state: string;
+  permission: 'Allowed' | 'Limited' | 'Blocked' | 'Review Required';
+  evidence_score: number;
+  risk_score: number;
+  created_at: string;
+}

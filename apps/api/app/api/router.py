@@ -295,3 +295,53 @@ def get_decision_history(commodity: str = "Copper", limit: int = 20, db: Session
         for r in rows
     ]
 
+
+# MARKET EVENTS
+@router.get("/api/market-events")
+def list_market_events(commodity: str | None = None, limit: int = 50, db: Session = Depends(get_db)):
+    from app.models.entities import MarketEventModel
+    q = db.query(MarketEventModel)
+    if commodity:
+        q = q.filter(MarketEventModel.commodity == commodity)
+    return q.order_by(MarketEventModel.date.desc()).limit(limit).all()
+
+@router.post("/api/market-events")
+def create_market_event(data: dict, db: Session = Depends(get_db)):
+    from app.models.entities import MarketEventModel
+    event = MarketEventModel(**data)
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    return event
+
+@router.delete("/api/market-events/{event_id}")
+def delete_market_event(event_id: str, db: Session = Depends(get_db)):
+    from app.models.entities import MarketEventModel
+    event = db.query(MarketEventModel).filter(MarketEventModel.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Market event not found")
+    db.delete(event)
+    db.commit()
+    return {"message": "Market event deleted successfully"}
+
+
+# RISK LIMITS
+@router.get("/api/risk-limits")
+def list_risk_limits(db: Session = Depends(get_db)):
+    from app.models.entities import RiskLimitModel
+    return db.query(RiskLimitModel).all()
+
+@router.put("/api/risk-limits/{commodity}")
+def upsert_risk_limit(commodity: str, data: dict, db: Session = Depends(get_db)):
+    from app.models.entities import RiskLimitModel
+    limit = db.query(RiskLimitModel).filter(RiskLimitModel.commodity == commodity).first()
+    if limit:
+        for k, v in data.items():
+            if k != "commodity":
+                setattr(limit, k, v)
+    else:
+        limit = RiskLimitModel(commodity=commodity, **{k: v for k, v in data.items() if k != "commodity"})
+        db.add(limit)
+    db.commit()
+    db.refresh(limit)
+    return limit
