@@ -168,14 +168,5 @@ def evaluate_all_rules(positions, inventory, shipments, counterparties, risk_lim
     return findings
 
 def calculate_scores(findings):
-    if not findings:
-        return {"risk_score": 15, "evidence_score": 85}
-    
-    total_risk_points = sum(f["score"] for f in findings)
-    risk_score = min(100, 15 + total_risk_points)
-    evidence_score = max(10, 100 - int(risk_score * 0.55))
-    
-    return {
-        "risk_score": risk_score,
-        "evidence_score": evidence_score
-    }
+    from app.engines.evidence.scoring import compute_scores
+    return compute_scores(findings)

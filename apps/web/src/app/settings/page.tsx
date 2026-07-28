@@ -88,7 +88,13 @@ export default function SettingsPage() {
           </div>
         </Section>
 
-        {/* Risk Engine */}
+        {/* Risk Limits Configuration */}
+        <RiskLimitsSection />
+
+        {/* Snapshot Management */}
+        <SnapshotTasksSection />
+
+        {/* Risk Engine Rules */}
         <Section title="Risk Engine Rules" icon={ShieldAlert}>
           {[
             { rule: 'Shipment Delay', trigger: '≥5 days delay → HIGH · ≥2 days → MEDIUM' },
@@ -150,6 +156,164 @@ export default function SettingsPage() {
     </PageShell>
   );
 }
+
+function RiskLimitsSection() {
+  const [commodity, setCommodity] = useState('Copper');
+  const [maxPos, setMaxPos] = useState('500');
+  const [maxCp, setMaxCp] = useState('90');
+  const [minInv, setMinInv] = useState('14');
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setMsg(null);
+    try {
+      await fetch(`${API_BASE}/api/risk-limits/${commodity}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          max_position_quantity: parseFloat(maxPos) || 500,
+          max_counterparty_exposure_pct: parseFloat(maxCp) || 90,
+          min_inventory_days: parseInt(minInv) || 14,
+        }),
+      });
+      setMsg(`Risk limits for ${commodity} saved successfully.`);
+    } catch {
+      setMsg(`Failed to save risk limits.`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Section title="Risk Limit Thresholds" icon={ShieldAlert}>
+      <div className="py-3 space-y-4">
+        <div className="flex items-center justify-between">
+          <label className="text-xs text-gray-400">Select Commodity</label>
+          <select
+            value={commodity}
+            onChange={e => setCommodity(e.target.value)}
+            className="text-xs text-white rounded-lg px-3 py-1.5 border focus:outline-none"
+            style={{ background: 'var(--background)', borderColor: 'var(--border)' }}
+          >
+            {['Copper','Aluminium','Zinc','Nickel'].map(c => <option key={c}>{c}</option>)}
+          </select>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="text-[10px] uppercase font-bold text-gray-500 block mb-1">Max Position (MT)</label>
+            <input
+              type="number"
+              value={maxPos}
+              onChange={e => setMaxPos(e.target.value)}
+              className="w-full text-xs text-white rounded-lg px-3 py-2 border focus:outline-none"
+              style={{ background: 'var(--background)', borderColor: 'var(--border)' }}
+            />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase font-bold text-gray-500 block mb-1">Max CP Exposure (%)</label>
+            <input
+              type="number"
+              value={maxCp}
+              onChange={e => setMaxCp(e.target.value)}
+              className="w-full text-xs text-white rounded-lg px-3 py-2 border focus:outline-none"
+              style={{ background: 'var(--background)', borderColor: 'var(--border)' }}
+            />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase font-bold text-gray-500 block mb-1">Min Inv Days</label>
+            <input
+              type="number"
+              value={minInv}
+              onChange={e => setMinInv(e.target.value)}
+              className="w-full text-xs text-white rounded-lg px-3 py-2 border focus:outline-none"
+              style={{ background: 'var(--background)', borderColor: 'var(--border)' }}
+            />
+          </div>
+        </div>
+        <div className="flex items-center justify-between pt-1">
+          {msg ? <span className={`text-xs ${msg.includes('failed') ? 'text-red-400' : 'text-emerald-400'}`}>{msg}</span> : <span />}
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="text-xs font-semibold px-4 py-1.5 rounded-lg transition-all bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50"
+          >
+            {saving ? 'Saving…' : 'Save Limits'}
+          </button>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+function SnapshotTasksSection() {
+  const [running, setRunning] = useState(false);
+  const [purging, setPurging] = useState(false);
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
+
+  const runSnapshots = async () => {
+    setRunning(true);
+    setStatusMsg(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/snapshots/run`, { method: 'POST' });
+      const data = await res.json();
+      setStatusMsg(`Snapshot run completed: ${JSON.stringify(data.results)}`);
+    } catch {
+      setStatusMsg('Failed to run snapshots.');
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const purgeSnapshots = async () => {
+    setPurging(true);
+    setStatusMsg(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/snapshots/purge?keep_last_n=50`, { method: 'DELETE' });
+      const data = await res.json();
+      setStatusMsg(data.message);
+    } catch {
+      setStatusMsg('Failed to purge snapshots.');
+    } finally {
+      setPurging(false);
+    }
+  };
+
+  return (
+    <Section title="Decision History Snapshots" icon={Database}>
+      <div className="py-3 space-y-3">
+        <p className="text-xs text-gray-400">
+          Trigger automated decision snapshots for all commodities or purge historical records.
+        </p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={runSnapshots}
+            disabled={running}
+            className="text-xs font-semibold px-4 py-2 rounded-lg transition-all bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 flex items-center gap-1.5"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${running ? 'animate-spin' : ''}`} />
+            {running ? 'Evaluating…' : 'Run All Commodity Snapshots'}
+          </button>
+          <button
+            onClick={purgeSnapshots}
+            disabled={purging}
+            className="text-xs font-semibold px-4 py-2 rounded-lg transition-all border text-gray-400 hover:text-white hover:bg-white/5 disabled:opacity-50"
+            style={{ borderColor: 'var(--border)' }}
+          >
+            {purging ? 'Purging…' : 'Purge Old Snapshots (>50)'}
+          </button>
+        </div>
+        {statusMsg && (
+          <p className={`text-xs ${statusMsg.includes('Failed') ? 'text-red-400' : 'text-emerald-400'} font-mono`}>
+            {statusMsg}
+          </p>
+        )}
+      </div>
+    </Section>
+  );
+}
+
 
 function Section({ title, icon: Icon, children }: { title: string; icon: React.ElementType; children: React.ReactNode }) {
   return (

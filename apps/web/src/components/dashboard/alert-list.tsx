@@ -9,8 +9,8 @@ interface AlertListProps {
 export function AlertList({ alerts }: AlertListProps) {
   if (!alerts || alerts.length === 0) {
     return (
-      <div className="p-4 rounded-xl bg-card border border-border text-center text-xs text-gray-400">
-        No active risk alerts for this commodity.
+      <div className="p-5 rounded-xl border text-center text-xs text-gray-400" style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
+        No active risk alerts matching current filter.
       </div>
     );
   }

@@ -9,11 +9,26 @@ import { RefreshCw, ShieldAlert, AlertTriangle, Info } from 'lucide-react';
 
 export default function AlertsPage() {
   const [commodity, setCommodity] = useState('Copper');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const { data: alerts, loading, refresh } = useAlerts(commodity || undefined);
+
+  const filteredAlerts = categoryFilter === 'all'
+    ? alerts
+    : alerts.filter(a => a.category?.toLowerCase() === categoryFilter.toLowerCase());
 
   const high = alerts.filter(a => a.severity === 'high').length;
   const medium = alerts.filter(a => a.severity === 'medium').length;
   const low = alerts.filter(a => a.severity === 'low').length;
+
+  const categories = [
+    { key: 'all', label: 'All Categories' },
+    { key: 'logistics', label: 'Logistics' },
+    { key: 'inventory', label: 'Inventory' },
+    { key: 'credit', label: 'Credit' },
+    { key: 'concentration', label: 'Concentration' },
+    { key: 'margin', label: 'Margin' },
+    { key: 'market_data', label: 'Market Data' },
+  ];
 
   return (
     <PageShell>
@@ -51,6 +66,24 @@ export default function AlertsPage() {
         ))}
       </div>
 
+      {/* Category Filter Tabs */}
+      <div className="flex items-center gap-1.5 mx-6 mb-4 overflow-x-auto pb-1">
+        {categories.map(cat => (
+          <button
+            key={cat.key}
+            onClick={() => setCategoryFilter(cat.key)}
+            className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-all whitespace-nowrap ${
+              categoryFilter === cat.key
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                : 'text-gray-400 hover:text-white border hover:bg-white/5'
+            }`}
+            style={categoryFilter !== cat.key ? { borderColor: 'var(--border)' } : {}}
+          >
+            {cat.label}
+          </button>
+        ))}
+      </div>
+
       {/* Full alert list */}
       <div className="mx-6 mb-6">
         {loading ? (
@@ -60,9 +93,10 @@ export default function AlertsPage() {
             </div>
           </div>
         ) : (
-          <AlertList alerts={alerts} />
+          <AlertList alerts={filteredAlerts} />
         )}
       </div>
+
 
       {/* Info footer */}
       <div className="mx-6 mb-6 p-4 rounded-xl text-xs text-gray-500 border"
