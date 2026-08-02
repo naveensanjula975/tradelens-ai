@@ -154,5 +154,29 @@ export interface SimulationResult {
       action?: string;
     }>;
   };
+export interface CommodityAnalyticsSummary {
+  commodity: string;
+  permission: 'Allowed' | 'Limited' | 'Blocked' | 'Review Required';
+  market_state: string;
+  risk_score: number;
+  evidence_score: number;
+  net_quantity_mt: number;
+  mtm_value_usd: number;
+  available_inventory_mt: number;
+  inventory_coverage_pct: number;
+  in_transit_shipments: number;
+  delayed_shipments: number;
+  high_alerts: number;
+  medium_alerts: number;
+}
+
+export interface PortfolioAnalytics {
+  total_portfolio_exposure_usd: number;
+  total_credit_limit_usd: number;
+  total_current_exposure_usd: number;
+  overall_credit_utilization_pct: number;
+  highest_risk_commodity: string;
+  permission_status_counts: Record<string, number>;
+  commodities: CommodityAnalyticsSummary[];
 }
 

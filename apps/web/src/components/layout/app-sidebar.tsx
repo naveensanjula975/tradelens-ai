@@ -3,13 +3,14 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Layers, Truck, Users, Bell, Settings, Cpu, Package, Zap, History, Sliders } from 'lucide-react';
+import { LayoutDashboard, Layers, Truck, Users, Bell, Settings, Cpu, Package, Zap, History, Sliders, BarChart3 } from 'lucide-react';
 
 export function AppSidebar() {
   const pathname = usePathname();
 
   const navItems = [
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { label: 'Portfolio Analytics', href: '/analytics', icon: BarChart3 },
     { label: 'Positions', href: '/positions', icon: Layers },
     { label: 'Inventory', href: '/inventory', icon: Package },
     { label: 'Shipments', href: '/shipments', icon: Truck },

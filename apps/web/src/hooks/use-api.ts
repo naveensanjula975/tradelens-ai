@@ -11,8 +11,9 @@ import {
   listMarketEvents,
   listDecisionHistory,
   listRiskLimits,
+  fetchAnalyticsSummary,
 } from '@/lib/api-client';
-import type { DashboardData, Position, Inventory, Shipment, Counterparty, Alert, MarketEvent, DecisionHistoryEntry, RiskLimit } from '@/types/domain';
+import type { DashboardData, Position, Inventory, Shipment, Counterparty, Alert, MarketEvent, DecisionHistoryEntry, RiskLimit, PortfolioAnalytics } from '@/types/domain';
 
 
 // ── Dashboard hook ─────────────────────────────────────────────────────────────
@@ -225,6 +226,29 @@ export function useRiskLimits() {
       setData(await listRiskLimits());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load risk limits');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+  return { data, loading, error, refresh: load };
+}
+
+// ── Portfolio Analytics hook ──────────────────────────────────────────────
+
+export function usePortfolioAnalytics() {
+  const [data, setData] = useState<PortfolioAnalytics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setData(await fetchAnalyticsSummary());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load portfolio analytics');
     } finally {
       setLoading(false);
     }
