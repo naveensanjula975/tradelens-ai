@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Float, Integer, DateTime, JSON, ForeignKey
+from sqlalchemy import Column, String, Float, Integer, DateTime, JSON, Boolean
 from app.database import Base
 
 def gen_id():
@@ -111,3 +111,20 @@ class AIBriefModel(Base):
     why = Column(JSON, default=list)
     next_actions = Column(JSON, default=list)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class PriceWatchlistModel(Base):
+    """Stores trader-defined price threshold alerts for commodity instruments."""
+    __tablename__ = "price_watchlist"
+
+    id = Column(String, primary_key=True, default=gen_id)
+    commodity = Column(String, nullable=False, index=True)
+    instrument = Column(String, nullable=False)              # e.g. 'LME Future'
+    label = Column(String, nullable=False)                   # human-readable name
+    direction = Column(String, nullable=False)               # 'above' | 'below'
+    threshold_price = Column(Float, nullable=False)          # trigger price
+    current_price = Column(Float, nullable=True)             # last evaluated price
+    is_triggered = Column(Boolean, default=False)            # True when threshold crossed
+    note = Column(String, nullable=True)                     # optional trader note
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_checked_at = Column(DateTime, nullable=True)

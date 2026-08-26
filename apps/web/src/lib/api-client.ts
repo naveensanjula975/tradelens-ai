@@ -1,4 +1,4 @@
-import { DashboardData, Position, Inventory, Shipment, Counterparty, Alert, MarketEvent, RiskLimit, DecisionHistoryEntry, SimulationParams, SimulationResult, PortfolioAnalytics } from '@/types/domain';
+import { DashboardData, Position, Inventory, Shipment, Counterparty, Alert, MarketEvent, RiskLimit, DecisionHistoryEntry, SimulationParams, SimulationResult, PortfolioAnalytics, PriceWatchlistEntry, PriceWatchlistCreate, WatchlistEvaluationSummary } from '@/types/domain';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -266,6 +266,35 @@ export async function evaluateSimulation(params: SimulationParams): Promise<Simu
 export async function fetchAnalyticsSummary(): Promise<PortfolioAnalytics> {
   return apiFetch<PortfolioAnalytics>('/api/analytics/summary');
 }
+
+// ── Price Watchlist ───────────────────────────────────────────────────────────
+
+export async function listWatchlist(commodity?: string): Promise<PriceWatchlistEntry[]> {
+  const qs = commodity ? `?commodity=${encodeURIComponent(commodity)}` : '';
+  try {
+    return await apiFetch<PriceWatchlistEntry[]>(`/api/watchlist${qs}`);
+  } catch {
+    return [];
+  }
+}
+
+export async function createWatchlistEntry(data: PriceWatchlistCreate): Promise<PriceWatchlistEntry> {
+  return apiFetch<PriceWatchlistEntry>('/api/watchlist', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateWatchlistEntry(id: string, data: Partial<PriceWatchlistCreate & { threshold_price: number }>): Promise<PriceWatchlistEntry> {
+  return apiFetch<PriceWatchlistEntry>(`/api/watchlist/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+}
+
+export async function deleteWatchlistEntry(id: string): Promise<void> {
+  await apiFetch<unknown>(`/api/watchlist/${id}`, { method: 'DELETE' });
+}
+
+export async function evaluateWatchlist(commodity?: string): Promise<WatchlistEvaluationSummary> {
+  const qs = commodity ? `?commodity=${encodeURIComponent(commodity)}` : '';
+  return apiFetch<WatchlistEvaluationSummary>(`/api/watchlist/evaluate${qs}`, { method: 'POST' });
+}
+
 
 // ── Fallback data ──────────────────────────────────────────────────────────────
 

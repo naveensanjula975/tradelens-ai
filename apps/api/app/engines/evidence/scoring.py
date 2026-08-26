@@ -52,8 +52,10 @@ def compute_risk_score(findings: list[dict]) -> int:
 
 
 def compute_scores(findings: list[dict]) -> dict[str, int]:
-    """Return both evidence and risk scores together."""
+    """Return evidence score, risk score, and critical alert count together."""
+    critical_count = sum(1 for f in findings if f.get("severity") == "high")
     return {
         "evidence_score": compute_evidence_score(findings),
         "risk_score": compute_risk_score(findings),
+        "critical_count": critical_count,
     }

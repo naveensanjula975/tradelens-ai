@@ -180,3 +180,28 @@ export interface PortfolioAnalytics {
   commodities: CommodityAnalyticsSummary[];
 }
 
+// ── Price Watchlist ───────────────────────────────────────────────────────────
+
+export interface PriceWatchlistEntry {
+  id: string;
+  commodity: string;
+  instrument: string;
+  label: string;
+  direction: 'above' | 'below';
+  threshold_price: number;
+  current_price: number | null;
+  is_triggered: boolean;
+  note?: string;
+  created_at?: string;
+  last_checked_at?: string;
+}
+
+export type PriceWatchlistCreate = Omit<PriceWatchlistEntry, 'id' | 'current_price' | 'is_triggered' | 'created_at' | 'last_checked_at'>;
+
+export interface WatchlistEvaluationSummary {
+  evaluated_count: number;
+  triggered_count: number;
+  pending_count: number;
+  triggered: PriceWatchlistEntry[];
+  pending: PriceWatchlistEntry[];
+}

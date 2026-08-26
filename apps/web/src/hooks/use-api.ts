@@ -257,3 +257,27 @@ export function usePortfolioAnalytics() {
   useEffect(() => { load(); }, [load]);
   return { data, loading, error, refresh: load };
 }
+
+// ── Price Watchlist hook ──────────────────────────────────────────────────────
+
+export function useWatchlist(commodity?: string) {
+  const [data, setData] = useState<import('@/types/domain').PriceWatchlistEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setData(await (await import('@/lib/api-client')).listWatchlist(commodity));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load watchlist');
+    } finally {
+      setLoading(false);
+    }
+  }, [commodity]);
+
+  useEffect(() => { load(); }, [load]);
+  return { data, loading, error, refresh: load };
+}
+

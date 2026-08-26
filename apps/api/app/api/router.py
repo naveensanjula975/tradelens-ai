@@ -372,3 +372,55 @@ def evaluate_scenario_simulation(payload: dict, db: Session = Depends(get_db)):
 def get_analytics_summary(db: Session = Depends(get_db)):
     from app.services.analytics_service import get_portfolio_analytics_summary
     return get_portfolio_analytics_summary(db)
+
+
+# ── PRICE WATCHLIST ────────────────────────────────────────────────────────────
+
+@router.get("/api/watchlist")
+def list_watchlist_entries(commodity: str | None = None, db: Session = Depends(get_db)):
+    """Return all price watchlist entries, optionally filtered by commodity."""
+    from app.services.watchlist_service import list_watchlist, _entry_to_dict
+    entries = list_watchlist(db, commodity)
+    return [_entry_to_dict(e) for e in entries]
+
+
+@router.post("/api/watchlist", status_code=201)
+def create_watchlist_entry(data: dict, db: Session = Depends(get_db)):
+    """Create a new price threshold alert and immediately evaluate it."""
+    from app.services.watchlist_service import create_watchlist_entry, _entry_to_dict
+    try:
+        entry = create_watchlist_entry(db, data)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _entry_to_dict(entry)
+
+
+@router.put("/api/watchlist/{entry_id}")
+def update_watchlist_entry(entry_id: str, data: dict, db: Session = Depends(get_db)):
+    """Update threshold, direction, or note for a watchlist entry."""
+    from app.services.watchlist_service import update_watchlist_entry, _entry_to_dict
+    entry = update_watchlist_entry(db, entry_id, data)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Watchlist entry not found")
+    return _entry_to_dict(entry)
+
+
+@router.delete("/api/watchlist/{entry_id}")
+def delete_watchlist_entry(entry_id: str, db: Session = Depends(get_db)):
+    """Delete a watchlist entry by ID."""
+    from app.services.watchlist_service import delete_watchlist_entry
+    deleted = delete_watchlist_entry(db, entry_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Watchlist entry not found")
+    return {"message": "Watchlist entry deleted successfully"}
+
+
+@router.post("/api/watchlist/evaluate")
+def evaluate_watchlist(commodity: str | None = None, db: Session = Depends(get_db)):
+    """
+    Evaluate all watchlist entries against current live market prices.
+    Returns a summary of triggered vs. pending alerts.
+    """
+    from app.services.watchlist_service import evaluate_all_watchlist
+    return evaluate_all_watchlist(db, commodity)
+
